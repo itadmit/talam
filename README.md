@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# תל״מ Anywhere
+
+פורטל ידע ופעולות לקצינים — מבוסס Next.js
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router, Server Components, Server Actions)
+- **Database**: Neon PostgreSQL + Drizzle ORM
+- **Auth**: Auth.js (NextAuth v5) with OTP
+- **Email**: Resend
+- **Storage**: Vercel Blob
+- **UI**: Tailwind CSS + shadcn/ui + Lucide React
+- **Validation**: Zod + React Hook Form
+- **Deploy**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set up environment variables
+
+Copy `.env.example` to `.env.local` and fill in:
+
+```bash
+cp .env.example .env.local
+```
+
+Required:
+- `DATABASE_URL` - Neon PostgreSQL connection string
+- `AUTH_SECRET` - Generate with `openssl rand -base64 32`
+- `RESEND_API_KEY` - Resend API key
+- `BLOB_READ_WRITE_TOKEN` - Vercel Blob token
+
+### 3. Set up database
+
+```bash
+# Push schema to database
+npm run db:push
+
+# Seed with sample data
+npm run db:seed
+```
+
+### 4. Run development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── (auth)/login/          # Login page (OTP)
+│   ├── (portal)/              # Main portal (protected)
+│   │   ├── page.tsx           # Dashboard
+│   │   ├── knowledge/         # Knowledge hub
+│   │   ├── tickets/           # Ticketing system
+│   │   ├── forms/             # Forms catalog & submission
+│   │   ├── contacts/          # Contact directory
+│   │   ├── links/             # Links library
+│   │   ├── community/         # Community health dashboard
+│   │   ├── search/            # Smart search
+│   │   ├── notifications/     # Notifications
+│   │   └── admin/             # Admin panel
+│   │       ├── users/         # User management
+│   │       ├── departments/   # Department management
+│   │       ├── categories/    # Category management
+│   │       ├── knowledge/     # Knowledge CMS
+│   │       ├── tickets/       # Ticket management
+│   │       ├── forms/         # Form management + Builder
+│   │       ├── contacts/      # Contact management
+│   │       ├── links/         # Link management
+│   │       └── audit/         # Audit logs
+│   └── api/
+│       ├── auth/              # NextAuth routes
+│       └── upload/            # File upload (Vercel Blob)
+├── actions/                   # Server actions
+├── components/
+│   ├── ui/                    # shadcn/ui components
+│   ├── layout/                # App shell, sidebar, header
+│   └── forms/                 # Dynamic form renderer
+└── lib/
+    ├── db/                    # Drizzle schema & connection
+    ├── auth/                  # Auth config & helpers
+    ├── validators.ts          # Zod schemas
+    └── email.ts               # Resend integration
+```
 
-## Learn More
+## Features
 
-To learn more about Next.js, take a look at the following resources:
+- **OTP Authentication** - Email-based login with one-time passwords
+- **Knowledge Hub** - Categorized information with status indicators
+- **Ticketing System** - Open tickets, message threads, status tracking
+- **Form Builder** - Drag-and-drop form creation with conditional logic
+- **Digital Signature** - Canvas-based signature for form submissions
+- **Smart Search** - Cross-module search (knowledge, forms, contacts, links)
+- **Community Dashboard** - Department health indicators, Q&A transparency
+- **Notifications** - In-app notifications for ticket responses and status changes
+- **Admin Panel** - Full CMS with user, department, and content management
+- **Audit Logging** - Track all system actions
+- **RTL & Dark Mode** - Full Hebrew RTL support with dark/light theme
+- **Mobile First** - Responsive design optimized for mobile
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Deploy to Vercel:
 
-## Deploy on Vercel
+```bash
+vercel --prod
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Make sure to set all environment variables in the Vercel dashboard.
