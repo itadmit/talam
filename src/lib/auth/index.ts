@@ -1,10 +1,10 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { users, otpVerifyTokens } from "@/lib/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authConfig: NextAuthConfig = {
   providers: [
     Credentials({
       id: "otp",
@@ -97,4 +97,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
-});
+};
+
+export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);

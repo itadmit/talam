@@ -50,9 +50,8 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result.ok) {
-      toast.success("התחברת בהצלחה!");
-      router.push("/");
-      router.refresh();
+      toast.success("מתחבר...");
+      window.location.href = result.redirectUrl ?? "/";
     } else {
       toast.error(result.error || "קוד שגוי");
     }
@@ -138,7 +137,7 @@ export default function LoginPage() {
                 </Button>
                 {devCode && (
                   <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-center font-mono text-lg tracking-widest text-amber-700 dark:text-amber-400">
-                    קוד לפיתוח: <strong>{devCode}</strong>
+                    הקוד שלך הוא: <strong>{devCode}</strong>
                   </div>
                 )}
                 <Button

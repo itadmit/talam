@@ -1,10 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { emailWhitelist, otpCodes, otpVerifyTokens, users } from "@/lib/db/schema";
 import { requestOtpSchema, verifyOtpSchema } from "@/lib/validators";
 import { sendOtpEmail } from "@/lib/email";
-import { signIn, signOut } from "@/lib/auth";
+import { signOut } from "@/lib/auth";
 import { eq, and, gt, isNull, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -67,11 +68,15 @@ export async function requestOtp(formData: FormData) {
     }
   }
 
+  const showDevCode =
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_DEV_OTP_DISPLAY === "true";
+
   return {
     ok: true,
     data: {
       otpSent: true,
-      ...(process.env.NODE_ENV === "development" && { devCode: code }),
+      ...(showDevCode && { devCode: code }),
     },
   };
 }
@@ -171,15 +176,16 @@ export async function verifyOtp(formData: FormData) {
     return { ok: false, error: result.error };
   }
 
-  try {
-    await signIn("otp", {
-      token: result.token,
-      redirect: false,
-    });
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "שגיאה בהתחברות. נסה שוב." };
-  }
+  const cookieStore = await cookies();
+  cookieStore.set("otp_verify_token", result.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/api/auth/otp-callback",
+    maxAge: 60,
+  });
+
+  return { ok: true, redirectUrl: "/api/auth/otp-callback" };
 }
 
 export async function logout() {
