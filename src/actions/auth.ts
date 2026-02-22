@@ -20,7 +20,7 @@ export async function requestOtp(formData: FormData) {
     return { ok: false, error: "כתובת מייל לא תקינה" };
   }
 
-  const { email } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
 
   // Check whitelist
   const [whitelisted] = await db
@@ -54,12 +54,14 @@ export async function requestOtp(formData: FormData) {
     console.log(`\n🔑 OTP for ${email}: ${code}\n`);
   }
 
-  // Send email (both dev and production – Resend API key required)
+  // Send email – כשמוגדר RESEND_API_KEY, שליחת המייל חובה
   try {
     await sendOtpEmail(email, code);
   } catch (err) {
     console.error("OTP email failed:", err);
-    // In dev, continue even if email fails (code is in console)
+    if (process.env.RESEND_API_KEY) {
+      return { ok: false, error: "שליחת המייל נכשלה, נסה שנית" };
+    }
     if (process.env.NODE_ENV !== "development") {
       return { ok: false, error: "שליחת המייל נכשלה, נסה שנית" };
     }
@@ -87,8 +89,8 @@ export async function verifyOtp(formData: FormData) {
 
   try {
     await signIn("otp", {
-      email: parsed.data.email,
-      code: parsed.data.code,
+      email: parsed.data.email.trim().toLowerCase(),
+      code: parsed.data.code.trim(),
       redirect: false,
     });
     return { ok: true };
