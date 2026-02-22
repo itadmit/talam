@@ -55,11 +55,22 @@ export async function requestOtp(formData: FormData) {
     console.log(`\n🔑 OTP for ${email}: ${code}\n`);
   }
 
-  // Send email – כשמוגדר RESEND_API_KEY, שליחת המייל חובה
+  const showDevCode =
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_DEV_OTP_DISPLAY === "true";
+
+  // Send email – כשמוגדר RESEND_API_KEY, שליחת המייל חובה (אלא אם showDevCode – אז ממשיכים עם הצגת קוד)
   try {
     await sendOtpEmail(email, code);
   } catch (err) {
     console.error("OTP email failed:", err);
+    if (showDevCode) {
+      // במצב פיתוח: ממשיכים ומציגים את הקוד גם אם המייל נכשל (למשל Resend 403)
+      return {
+        ok: true,
+        data: { otpSent: false, devCode: code },
+      };
+    }
     if (process.env.RESEND_API_KEY) {
       return { ok: false, error: "שליחת המייל נכשלה, נסה שנית" };
     }
@@ -67,10 +78,6 @@ export async function requestOtp(formData: FormData) {
       return { ok: false, error: "שליחת המייל נכשלה, נסה שנית" };
     }
   }
-
-  const showDevCode =
-    process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_DEV_OTP_DISPLAY === "true";
 
   return {
     ok: true,
