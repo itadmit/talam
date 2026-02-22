@@ -1,11 +1,11 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { emailWhitelist, otpCodes } from "@/lib/db/schema";
+import { emailWhitelist, otpCodes, otpVerifyTokens, users } from "@/lib/db/schema";
 import { requestOtpSchema, verifyOtpSchema } from "@/lib/validators";
 import { sendOtpEmail } from "@/lib/email";
 import { signIn, signOut } from "@/lib/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gt, isNull, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 function generateOtp(): string {
@@ -76,6 +76,82 @@ export async function requestOtp(formData: FormData) {
   };
 }
 
+/** אימות OTP, צריכת הקוד, יצירת משתמש אם צריך, והחזרת טוקן חד־פעמי */
+async function verifyOtpAndCreateToken(
+  email: string,
+  code: string
+): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  const normEmail = email.trim().toLowerCase();
+  const normCode = code.trim();
+
+  const [otp] = await db
+    .select()
+    .from(otpCodes)
+    .where(eq(otpCodes.email, normEmail))
+    .orderBy(desc(otpCodes.createdAt))
+    .limit(1);
+
+  if (!otp) {
+    return { ok: false, error: "לא נמצא קוד. נסה לבקש קוד חדש." };
+  }
+
+  if (otp.consumedAt) {
+    return { ok: false, error: "הקוד כבר נוצל. נסה לבקש קוד חדש." };
+  }
+
+  if (new Date() >= otp.expiresAt) {
+    return { ok: false, error: "פג תוקף הקוד. נסה לבקש קוד חדש." };
+  }
+
+  if (otp.attempts >= 5) {
+    return { ok: false, error: "פג תוקף הקוד. נסה לבקש קוד חדש." };
+  }
+
+  const isValid = await bcrypt.compare(normCode, otp.codeHash);
+  if (!isValid) {
+    await db
+      .update(otpCodes)
+      .set({ attempts: otp.attempts + 1 })
+      .where(eq(otpCodes.id, otp.id));
+    return { ok: false, error: "קוד שגוי." };
+  }
+
+  await db
+    .update(otpCodes)
+    .set({ consumedAt: new Date() })
+    .where(eq(otpCodes.id, otp.id));
+
+  let [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, normEmail));
+
+  if (!user) {
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email: normEmail,
+        role: "user",
+        isActive: true,
+      })
+      .returning();
+    user = newUser;
+  }
+
+  if (!user.isActive) {
+    return { ok: false, error: "המשתמש אינו פעיל." };
+  }
+
+  const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  await db.insert(otpVerifyTokens).values({
+    userId: user.id,
+    token,
+    expiresAt: new Date(Date.now() + 60 * 1000),
+  });
+
+  return { ok: true, token };
+}
+
 export async function verifyOtp(formData: FormData) {
   const raw = {
     email: formData.get("email"),
@@ -87,15 +163,22 @@ export async function verifyOtp(formData: FormData) {
     return { ok: false, error: "נתונים לא תקינים" };
   }
 
+  const email = parsed.data.email.trim().toLowerCase();
+  const code = parsed.data.code.trim();
+
+  const result = await verifyOtpAndCreateToken(email, code);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
   try {
     await signIn("otp", {
-      email: parsed.data.email.trim().toLowerCase(),
-      code: parsed.data.code.trim(),
+      token: result.token,
       redirect: false,
     });
     return { ok: true };
   } catch {
-    return { ok: false, error: "קוד שגוי או שפג תוקפו" };
+    return { ok: false, error: "שגיאה בהתחברות. נסה שוב." };
   }
 }
 

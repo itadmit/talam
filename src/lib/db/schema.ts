@@ -127,6 +127,15 @@ export const otpCodes = pgTable(
   (table) => [index("otp_email_idx").on(table.email)]
 );
 
+// One-time token for verified OTP (bypasses Auth.js credentials parsing issues)
+export const otpVerifyTokens = pgTable("otp_verify_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // 4) departments
 export const departments = pgTable("departments", {
   id: uuid("id").defaultRandom().primaryKey(),

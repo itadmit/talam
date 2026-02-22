@@ -1,9 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
-import { users, otpCodes } from "@/lib/db/schema";
-import { eq, and, gt, isNull, desc } from "drizzle-orm";
-import bcrypt from "bcryptjs";
+import { users, otpVerifyTokens } from "@/lib/db/schema";
+import { eq, and, gt } from "drizzle-orm";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -11,78 +10,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       id: "otp",
       name: "OTP",
       credentials: {
-        email: { label: "Email", type: "email" },
-        code: { label: "Code", type: "text" },
+        token: { label: "Token", type: "text" },
       },
       async authorize(credentials) {
         try {
-          const rawEmail = (credentials?.email as string)?.trim();
-          const email = rawEmail?.toLowerCase();
-          const code = (credentials?.code as string)?.trim();
-
-          if (!email || !code) {
-            console.error("[auth] authorize: missing email or code");
+          const token = (credentials?.token as string)?.trim();
+          if (!token) {
+            console.error("[auth] authorize: missing token");
             return null;
           }
 
-          // Find valid OTP
-          const [otp] = await db
+          const [row] = await db
             .select()
-            .from(otpCodes)
+            .from(otpVerifyTokens)
             .where(
               and(
-                eq(otpCodes.email, email),
-                gt(otpCodes.expiresAt, new Date()),
-                isNull(otpCodes.consumedAt)
+                eq(otpVerifyTokens.token, token),
+                gt(otpVerifyTokens.expiresAt, new Date())
               )
             )
-            .orderBy(desc(otpCodes.createdAt))
             .limit(1);
 
-          if (!otp) {
-            console.error("[auth] authorize: no valid OTP found for", email);
-            return null;
-          }
-
-          if (otp.attempts >= 5) {
-            console.error("[auth] authorize: too many attempts for", email);
-            return null;
-          }
-
-          const isValid = await bcrypt.compare(code, otp.codeHash);
-          if (!isValid) {
-            await db
-              .update(otpCodes)
-              .set({ attempts: otp.attempts + 1 })
-              .where(eq(otpCodes.id, otp.id));
-            console.error("[auth] authorize: invalid OTP code for", email);
+          if (!row) {
+            console.error("[auth] authorize: invalid or expired token");
             return null;
           }
 
           await db
-            .update(otpCodes)
-            .set({ consumedAt: new Date() })
-            .where(eq(otpCodes.id, otp.id));
+            .delete(otpVerifyTokens)
+            .where(eq(otpVerifyTokens.id, row.id));
 
-          let [user] = await db
+          const [user] = await db
             .select()
             .from(users)
-            .where(eq(users.email, email));
+            .where(eq(users.id, row.userId))
+            .limit(1);
 
-          if (!user) {
-            const [newUser] = await db
-              .insert(users)
-              .values({
-                email,
-                role: "user",
-                isActive: true,
-              })
-              .returning();
-            user = newUser;
-          }
-
-          if (!user.isActive) {
-            console.error("[auth] authorize: user inactive", email);
+          if (!user || !user.isActive) {
+            console.error("[auth] authorize: user not found or inactive");
             return null;
           }
 
