@@ -16,10 +16,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   async function handleRequestOtp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setDevCode(null);
 
     const formData = new FormData();
     formData.set("email", email);
@@ -30,6 +32,7 @@ export default function LoginPage() {
     if (result.ok) {
       toast.success("קוד נשלח למייל שלך");
       setStep("otp");
+      if (result.data?.devCode) setDevCode(result.data.devCode);
     } else {
       toast.error(result.error || "שגיאה בשליחת הקוד");
     }
@@ -133,6 +136,11 @@ export default function LoginPage() {
                   )}
                   אמת וכנס
                 </Button>
+                {devCode && (
+                  <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-center font-mono text-lg tracking-widest text-amber-700 dark:text-amber-400">
+                    קוד לפיתוח: <strong>{devCode}</strong>
+                  </div>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -140,6 +148,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setStep("email");
                     setCode("");
+                    setDevCode(null);
                   }}
                 >
                   <ArrowRight className="h-4 w-4" />

@@ -65,7 +65,13 @@ export async function requestOtp(formData: FormData) {
     }
   }
 
-  return { ok: true, data: { otpSent: true } };
+  return {
+    ok: true,
+    data: {
+      otpSent: true,
+      ...(process.env.NODE_ENV === "development" && { devCode: code }),
+    },
+  };
 }
 
 export async function verifyOtp(formData: FormData) {

@@ -40,10 +40,12 @@ async function sendEmail({
   subject: string;
   html: string;
 }) {
+  // Resend free tier: ניתן לשלוח רק לכתובת הבעלים. הגדר RESEND_OVERRIDE_TO (למשל itadmit@gmail.com) כדי לשלוח לשם בפיתוח.
+  const recipient = process.env.RESEND_OVERRIDE_TO || to;
   try {
     const { error } = await resend.emails.send({
       from: FROM,
-      to,
+      to: recipient,
       subject,
       html: emailWrapper(html),
     });
