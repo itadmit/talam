@@ -56,6 +56,7 @@ async function seed() {
     { key: "resilience", name: "חוסן", description: "תמיכה נפשית ורווחה", icon: "Shield", color: "purple", order: 3 },
     { key: "contacts", name: "אנשי קשר", description: "ספריית אנשי קשר", icon: "Phone", color: "yellow", order: 4 },
     { key: "links", name: "קישורים", description: "קישורים שימושיים", icon: "Link2", color: "cyan", order: 5 },
+    { key: "forms", name: "טפסים", description: "טפסים וקובצי PDF", icon: "FileText", color: "blue", order: 5.5 },
     { key: "testimonials", name: "עדויות", description: "סיפורים וחוויות", icon: "MessageSquare", color: "pink", order: 6 },
     { key: "dashboard", name: "טבלת קהילה", description: "מצב מידע ושקיפות", icon: "BarChart3", color: "orange", order: 7 },
   ];

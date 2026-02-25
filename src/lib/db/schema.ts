@@ -10,6 +10,7 @@ import {
   pgEnum,
   index,
   uniqueIndex,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -167,19 +168,29 @@ export const departmentDuty = pgTable(
   (table) => [index("duty_department_idx").on(table.departmentId)]
 );
 
-// 6) categories
-export const categories = pgTable("categories", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  key: varchar("key", { length: 100 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  icon: varchar("icon", { length: 100 }),
-  color: varchar("color", { length: 50 }),
-  order: integer("order").notNull().default(0),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+// 6) categories (supports hierarchy via parentId)
+export const categories = pgTable(
+  "categories",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    parentId: uuid("parent_id"),
+    key: varchar("key", { length: 100 }).notNull().unique(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    icon: varchar("icon", { length: 100 }),
+    color: varchar("color", { length: 50 }),
+    order: integer("order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    parentFk: foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }),
+  })
+);
 
 // 7) knowledge_items
 export const knowledgeItems = pgTable(
@@ -474,7 +485,13 @@ export const departmentsRelations = relations(departments, ({ many }) => ({
   duties: many(departmentDuty),
 }));
 
-export const categoriesRelations = relations(categories, ({ many }) => ({
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, {
+    fields: [categories.parentId],
+    references: [categories.id],
+    relationName: "categoryHierarchy",
+  }),
+  children: many(categories, { relationName: "categoryHierarchy" }),
   knowledgeItems: many(knowledgeItems),
   forms: many(forms),
   links: many(links),

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { categories, tickets, knowledgeItems } from "@/lib/db/schema";
 import { eq, desc, isNull } from "drizzle-orm";
+import { getCategories } from "@/actions/admin";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ const iconMap: Record<string, React.ElementType> = {
   resilience: Shield,
   contacts: Phone,
   links: Link2,
+  forms: FileText,
   testimonials: MessageSquare,
   dashboard: BarChart3,
   default: BookOpen,
@@ -41,6 +43,7 @@ const colorMap: Record<string, string> = {
   resilience: "from-purple-500/20 to-purple-600/10 text-purple-600 dark:text-purple-400",
   contacts: "from-yellow-500/20 to-yellow-600/10 text-yellow-600 dark:text-yellow-400",
   links: "from-cyan-500/20 to-cyan-600/10 text-cyan-600 dark:text-cyan-400",
+  forms: "from-sky-500/20 to-sky-600/10 text-sky-600 dark:text-sky-400",
   testimonials: "from-pink-500/20 to-pink-600/10 text-pink-600 dark:text-pink-400",
   dashboard: "from-orange-500/20 to-orange-600/10 text-orange-600 dark:text-orange-400",
   default: "from-primary/20 to-primary/10 text-primary",
@@ -73,10 +76,7 @@ export default async function DashboardPage() {
   let recentUpdates: (typeof knowledgeItems.$inferSelect)[] = [];
 
   try {
-    cats = await db.query.categories.findMany({
-      where: eq(categories.isActive, true),
-      orderBy: [categories.order],
-    });
+    cats = await getCategories();
 
     recentTickets = (await db.query.tickets.findMany({
       where:
@@ -137,8 +137,23 @@ export default async function DashboardPage() {
             cats.map((cat) => {
               const Icon = iconMap[cat.key] || iconMap.default;
               const colorClass = colorMap[cat.key] || colorMap.default;
+              const parentKey = (cat.parent as { key?: string } | null)?.key;
+              const href =
+                cat.key === "forms" || parentKey === "forms"
+                  ? cat.key === "forms"
+                    ? "/forms"
+                    : `/forms?categoryId=${cat.id}`
+                  : cat.key === "contacts" || parentKey === "contacts"
+                    ? "/contacts"
+                    : cat.key === "links" || parentKey === "links"
+                      ? cat.key === "links"
+                        ? "/links"
+                        : `/links?categoryId=${cat.id}`
+                      : cat.key === "dashboard" || parentKey === "dashboard"
+                        ? "/community"
+                        : `/knowledge?category=${cat.id}`;
               return (
-                <Link key={cat.id} href={`/knowledge?category=${cat.id}`}>
+                <Link key={cat.id} href={href}>
                   <Card className="group hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 cursor-pointer h-full">
                     <CardContent className="p-5 flex flex-col items-center text-center gap-3">
                       <div

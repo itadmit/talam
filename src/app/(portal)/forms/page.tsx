@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { getForms } from "@/actions/forms";
-import { getCategories } from "@/actions/admin";
+import { getCategoriesForForms } from "@/actions/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, PenTool, Building2 } from "lucide-react";
 import { FormFilters } from "./form-filters";
+
+const iconMap: Record<string, React.ElementType> = {
+  forms: FileText,
+  default: FileText,
+};
 
 export default async function FormsPage({
   searchParams,
@@ -13,7 +18,7 @@ export default async function FormsPage({
 }) {
   const params = await searchParams;
   let data: Awaited<ReturnType<typeof getForms>> = { items: [], total: 0, page: 1, limit: 20 };
-  let cats: Awaited<ReturnType<typeof getCategories>> = [];
+  let cats: Awaited<ReturnType<typeof getCategoriesForForms>> = [];
 
   try {
     [data, cats] = await Promise.all([
@@ -23,9 +28,15 @@ export default async function FormsPage({
         status: "active",
         page: params.page ? parseInt(params.page) : 1,
       }),
-      getCategories(),
+      getCategoriesForForms().catch(() => []),
     ]);
   } catch {}
+
+  const formCategories = cats.filter(
+    (c: { key?: string; parent?: { key?: string } }) =>
+      c.key === "forms" || (c.parent && c.parent.key === "forms")
+  );
+  const showCategoryTiles = !params.categoryId && !params.q;
 
   return (
     <div className="space-y-6">
@@ -42,6 +53,29 @@ export default async function FormsPage({
         currentCategory={params.categoryId}
         currentQuery={params.q}
       />
+
+      {showCategoryTiles && formCategories.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">קטגוריות טפסים</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {formCategories.map((cat: { id: string; key?: string; name: string }) => {
+              const Icon = iconMap[cat.key || ""] || iconMap.default;
+              return (
+                <Link key={cat.id} href={`/forms?categoryId=${cat.id}`}>
+                  <Card className="group hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 cursor-pointer h-full">
+                    <CardContent className="p-5 flex flex-col items-center text-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center transition-transform group-hover:scale-110">
+                        <Icon className="h-7 w-7 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-sm">{cat.name}</h3>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {data.items.length > 0 ? (

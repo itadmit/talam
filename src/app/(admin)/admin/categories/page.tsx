@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BookOpen } from "lucide-react";
-import { CategoryDialog, ToggleCategoryActive } from "./category-actions-client";
+import { CategoryDialog, ToggleCategoryActive, DeleteCategoryButton } from "./category-actions-client";
 
 export default async function AdminCategoriesPage() {
   await requireDeptManagerOrAdmin();
@@ -30,7 +30,14 @@ export default async function AdminCategoriesPage() {
           </h1>
           <p className="text-muted-foreground mt-1">{categories.length} קטגוריות</p>
         </div>
-        <CategoryDialog totalCategories={categories.length} />
+        <CategoryDialog
+          totalCategories={categories.length}
+          categories={categories.map((c: { id: string; name: string; parentId: string | null }) => ({
+            id: c.id,
+            name: c.name,
+            parentId: c.parentId ?? null,
+          }))}
+        />
       </div>
 
       <Card>
@@ -41,7 +48,8 @@ export default async function AdminCategoriesPage() {
                 <TableHead>סדר</TableHead>
                 <TableHead>מפתח</TableHead>
                 <TableHead>שם</TableHead>
-                <TableHead>פעיל</TableHead>
+                <TableHead>תחת</TableHead>
+                <TableHead title="כשכבוי – הקטגוריה מוסתרת מהפורטל">מוצג בפורטל</TableHead>
                 <TableHead className="w-24">פעולות</TableHead>
               </TableRow>
             </TableHeader>
@@ -52,12 +60,23 @@ export default async function AdminCategoriesPage() {
                   <TableCell>{cat.order}</TableCell>
                   <TableCell className="font-mono text-xs">{cat.key}</TableCell>
                   <TableCell className="font-medium">{cat.name}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {cat.parent ? cat.parent.name : "—"}
+                  </TableCell>
                   <TableCell>
                     <ToggleCategoryActive id={cat.id} isActive={cat.isActive} />
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <CategoryDialog category={cat} />
+                      <CategoryDialog
+                        category={cat}
+                        categories={categories.map((c: { id: string; name: string; parentId: string | null }) => ({
+                          id: c.id,
+                          name: c.name,
+                          parentId: c.parentId ?? null,
+                        }))}
+                      />
+                      <DeleteCategoryButton id={cat.id} name={cat.name} />
                     </div>
                   </TableCell>
                 </TableRow>

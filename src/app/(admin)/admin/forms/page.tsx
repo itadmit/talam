@@ -1,5 +1,5 @@
 import { getForms, getSubmissions } from "@/actions/forms";
-import { getCategories, getDepartments } from "@/actions/admin";
+import { getCategoriesForForms, getDepartments } from "@/actions/admin";
 import { requireDeptManagerOrAdmin } from "@/lib/auth/helpers";
 import { FormsAdminClient } from "./forms-admin-client";
 
@@ -18,15 +18,15 @@ export default async function AdminFormsPage() {
     page: 1,
     limit: 20,
   };
-  let categories: Awaited<ReturnType<typeof getCategories>> = [];
+  let categories: Awaited<ReturnType<typeof getCategoriesForForms>> = [];
   let departments: Awaited<ReturnType<typeof getDepartments>> = [];
 
   try {
     [formsData, subsData, categories, departments] = await Promise.all([
-      getForms(),
-      getSubmissions(),
-      getCategories(),
-      getDepartments(),
+      getForms().catch(() => ({ items: [], total: 0, page: 1, limit: 20 })),
+      getSubmissions().catch(() => ({ items: [], total: 0, page: 1, limit: 20 })),
+      getCategoriesForForms().catch(() => []),
+      getDepartments().catch(() => []),
     ]);
   } catch {}
 

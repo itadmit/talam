@@ -1,4 +1,4 @@
-import { getLinks, getCategories } from "@/actions/admin";
+import { getLinks, getCategoriesForLinks } from "@/actions/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link2, ExternalLink } from "lucide-react";
@@ -11,12 +11,12 @@ export default async function LinksPage({
 }) {
   const params = await searchParams;
   let linksList: Awaited<ReturnType<typeof getLinks>> = [];
-  let cats: Awaited<ReturnType<typeof getCategories>> = [];
+  let cats: Awaited<ReturnType<typeof getCategoriesForLinks>> = [];
 
   try {
     [linksList, cats] = await Promise.all([
       getLinks({ categoryId: params.categoryId, q: params.q }),
-      getCategories(),
+      getCategoriesForLinks().catch(() => []),
     ]);
   } catch {}
 

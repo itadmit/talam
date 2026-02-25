@@ -1,4 +1,4 @@
-import { getLinks, getCategories, getDepartments } from "@/actions/admin";
+import { getLinks, getCategoriesForLinks, getDepartments } from "@/actions/admin";
 import { requireDeptManagerOrAdmin } from "@/lib/auth/helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,13 +21,13 @@ export default async function AdminLinksPage({
   const params = await searchParams;
 
   let links: Awaited<ReturnType<typeof getLinks>> = [];
-  let categories: Awaited<ReturnType<typeof getCategories>> = [];
+  let categories: Awaited<ReturnType<typeof getCategoriesForLinks>> = [];
   let departments: Awaited<ReturnType<typeof getDepartments>> = [];
 
   try {
     [links, categories, departments] = await Promise.all([
       getLinks({ categoryId: params.categoryId, q: params.q }),
-      getCategories(),
+      getCategoriesForLinks().catch(() => []),
       getDepartments(),
     ]);
   } catch {}

@@ -45,7 +45,7 @@ import {
   ClipboardList,
   Eye,
 } from "lucide-react";
-import { deleteForm, createForm, updateSubmissionStatus } from "@/actions/forms";
+import { deleteForm, createForm, updateForm, updateSubmissionStatus } from "@/actions/forms";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -103,7 +103,7 @@ interface SubmissionItem {
 interface Props {
   forms: FormItem[];
   submissions: SubmissionItem[];
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; parent?: { id: string; name: string } | null }[];
   departments: { id: string; name: string }[];
 }
 
@@ -125,6 +125,7 @@ export function FormsAdminClient({
   const [viewSubmission, setViewSubmission] = useState<SubmissionItem | null>(
     null
   );
+  const [editForm, setEditForm] = useState<FormItem | null>(null);
 
   async function handleDelete(id: string) {
     if (!confirm("האם למחוק את הטופס?")) return;
@@ -167,6 +168,44 @@ export function FormsAdminClient({
     setExtCategoryId("");
     setExtDeptId("");
     setExtStatus("active");
+    setEditForm(null);
+  }
+
+  function openEditExternal(form: FormItem) {
+    setEditForm(form);
+    setExtTitle(form.title);
+    setExtDescription(form.description || "");
+    setExtUrl(form.externalUrl || "");
+    setExtCategoryId(form.category?.id || "none");
+    setExtDeptId(form.ownerDepartment?.id || "none");
+    setExtStatus(form.status);
+  }
+
+  async function handleUpdateExternal() {
+    if (!editForm || !extTitle || !extUrl) {
+      toast.error("יש להזין כותרת וכתובת URL");
+      return;
+    }
+    setSaving(true);
+    const result = await updateForm(editForm.id, {
+      formType: "external",
+      title: extTitle,
+      description: extDescription || undefined,
+      externalUrl: extUrl,
+      categoryId: extCategoryId || null,
+      ownerDepartmentId: extDeptId || null,
+      status: extStatus as "draft" | "active" | "archived",
+    });
+    setSaving(false);
+    if (result.ok) {
+      toast.success("הטופס החיצוני עודכן");
+      setEditForm(null);
+      setExternalDialogOpen(false);
+      resetExternalForm();
+      router.refresh();
+    } else {
+      toast.error("שגיאה בעדכון הטופס");
+    }
   }
 
   async function handleSubmissionStatus(
@@ -261,20 +300,32 @@ export function FormsAdminClient({
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {form.formType === "external" && form.externalUrl && (
-                            <a
-                              href={form.externalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
+                          {form.formType === "external" && (
+                            <>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                onClick={() => openEditExternal(form)}
                               >
-                                <ExternalLink className="h-3.5 w-3.5" />
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
-                            </a>
+                              {form.externalUrl && (
+                                <a
+                                  href={form.externalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </Button>
+                                </a>
+                              )}
+                            </>
                           )}
                           {form.formType === "digital" && (
                             <Link
@@ -483,11 +534,21 @@ export function FormsAdminClient({
         </DialogContent>
       </Dialog>
 
-      {/* Create External Form Dialog */}
-      <Dialog open={externalDialogOpen} onOpenChange={setExternalDialogOpen}>
+      {/* Create / Edit External Form Dialog */}
+      <Dialog
+        open={externalDialogOpen || !!editForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setExternalDialogOpen(false);
+            resetExternalForm();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>הוספת טופס חיצוני (PDF/URL)</DialogTitle>
+            <DialogTitle>
+              {editForm ? "עריכת טופס חיצוני" : "הוספת טופס חיצוני (PDF/URL)"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -527,7 +588,7 @@ export function FormsAdminClient({
                     <SelectItem value="none">ללא</SelectItem>
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                        {c.parent ? `${c.parent.name} › ${c.name}` : c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -565,15 +626,17 @@ export function FormsAdminClient({
             </div>
             <Button
               className="w-full gap-2"
-              onClick={handleCreateExternal}
+              onClick={editForm ? handleUpdateExternal : handleCreateExternal}
               disabled={saving}
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editForm ? (
+                <Edit className="h-4 w-4" />
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              הוסף טופס חיצוני
+              {editForm ? "עדכן טופס" : "הוסף טופס חיצוני"}
             </Button>
           </div>
         </DialogContent>

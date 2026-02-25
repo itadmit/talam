@@ -57,7 +57,7 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Header + מעבר לפרונט */}
+          {/* Header + מעבר לפורטל */}
           <div className="p-4 border-b border-zinc-700/50 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-lg text-zinc-100">ניהול מערכת</span>
@@ -76,7 +76,7 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
               className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-100 bg-zinc-800 hover:bg-zinc-700 transition-colors"
             >
               <ExternalLink className="h-4 w-4 shrink-0" />
-              מעבר לפרונט
+              מעבר לפורטל
             </Link>
           </div>
 

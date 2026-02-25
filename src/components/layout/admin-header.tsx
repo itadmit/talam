@@ -133,7 +133,7 @@ export function AdminHeader({
           <Link href="/">
             <Button variant="outline" size="sm" className="gap-2">
               <ExternalLink className="h-4 w-4" />
-              מעבר לפרונט
+              מעבר לפורטל
             </Button>
           </Link>
         </div>

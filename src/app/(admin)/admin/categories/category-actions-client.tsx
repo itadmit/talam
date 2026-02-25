@@ -14,8 +14,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IconPicker } from "@/components/ui/icon-picker";
-import { Plus, Edit, Loader2 } from "lucide-react";
-import { createCategory, updateCategory } from "@/actions/admin";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Edit, Loader2, Trash2 } from "lucide-react";
+import { createCategory, updateCategory, deleteCategory } from "@/actions/admin";
 import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
@@ -24,6 +31,7 @@ import { toast } from "sonner";
 
 interface CategoryDialogProps {
   totalCategories?: number;
+  categories?: { id: string; name: string; parentId: string | null }[];
   category?: {
     id: string;
     key: string;
@@ -33,10 +41,11 @@ interface CategoryDialogProps {
     color: string | null;
     order: number;
     isActive: boolean;
+    parentId: string | null;
   };
 }
 
-export function CategoryDialog({ totalCategories = 0, category }: CategoryDialogProps) {
+export function CategoryDialog({ totalCategories = 0, categories = [], category }: CategoryDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,6 +57,9 @@ export function CategoryDialog({ totalCategories = 0, category }: CategoryDialog
   const [icon, setIcon] = useState("");
   const [color, setColor] = useState("");
   const [order, setOrder] = useState(0);
+  const [parentId, setParentId] = useState<string>("none");
+
+  const rootCategories = categories.filter((c) => !c.parentId);
 
   function handleOpenChange(isOpen: boolean) {
     if (isOpen) {
@@ -57,6 +69,7 @@ export function CategoryDialog({ totalCategories = 0, category }: CategoryDialog
       setIcon(category?.icon || "");
       setColor(category?.color || "");
       setOrder(category?.order ?? totalCategories);
+      setParentId(category?.parentId || "none");
     }
     setOpen(isOpen);
   }
@@ -72,6 +85,7 @@ export function CategoryDialog({ totalCategories = 0, category }: CategoryDialog
         icon: icon || undefined,
         color: color || undefined,
         order,
+        parentId: parentId === "none" ? null : parentId,
       });
       toast.success("הקטגוריה עודכנה");
     } else {
@@ -82,6 +96,7 @@ export function CategoryDialog({ totalCategories = 0, category }: CategoryDialog
         icon: icon || undefined,
         color: color || undefined,
         order,
+        parentId: parentId === "none" ? null : parentId,
       });
       toast.success("הקטגוריה נוצרה");
     }
@@ -117,6 +132,27 @@ export function CategoryDialog({ totalCategories = 0, category }: CategoryDialog
             </div>
           )}
           <div className="space-y-2">
+            <Label>קטגוריה אב (תת-קטגוריה תחת)</Label>
+            <Select value={parentId} onValueChange={setParentId}>
+              <SelectTrigger>
+                <SelectValue placeholder="ללא (קטגוריה ראשית)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">ללא (קטגוריה ראשית)</SelectItem>
+                {rootCategories
+                  .filter((c) => !isEdit || c.id !== category?.id)
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              לבחירת &quot;קישורים&quot; — תיצור תת-קטגוריה תחת קישורים (לטפסים חיצוניים)
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label>שם</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
@@ -149,7 +185,38 @@ export function CategoryDialog({ totalCategories = 0, category }: CategoryDialog
 }
 
 /* ------------------------------------------------------------------ */
-/*  ToggleCategoryActive – Switch for toggling isActive               */
+/*  DeleteCategoryButton                                              */
+/* ------------------------------------------------------------------ */
+
+export function DeleteCategoryButton({
+  id,
+  name,
+}: {
+  id: string;
+  name: string;
+}) {
+  const router = useRouter();
+
+  async function handleDelete() {
+    if (!confirm(`האם למחוק את הקטגוריה "${name}"? פעולה זו לא ניתנת לביטול.`)) return;
+    const res = await deleteCategory(id);
+    if (res.ok) {
+      toast.success("הקטגוריה נמחקה");
+      router.refresh();
+    } else {
+      toast.error(res.error ?? "אירעה שגיאה במחיקה");
+    }
+  }
+
+  return (
+    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleDelete}>
+      <Trash2 className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ToggleCategoryActive – Switch for toggling isActive / הסתרה מהפורטל */
 /* ------------------------------------------------------------------ */
 
 export function ToggleCategoryActive({ id, isActive }: { id: string; isActive: boolean }) {

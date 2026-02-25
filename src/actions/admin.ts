@@ -8,6 +8,7 @@ import {
   categories,
   contacts,
   links,
+  forms,
   departmentDuty,
   auditLogs,
   tickets,
@@ -184,13 +185,39 @@ export async function deleteDepartment(id: string) {
 export async function getCategories() {
   return db.query.categories.findMany({
     where: eq(categories.isActive, true),
-    orderBy: [categories.order],
+    with: { parent: { columns: { id: true, name: true, key: true } } },
+    orderBy: [categories.order, categories.name],
   });
+}
+
+/** קטגוריות לטפסים בלבד — טפסים + תת-קטגוריות */
+export async function getCategoriesForForms() {
+  const all = await getCategories();
+  type Cat = (typeof all)[number];
+  const formsRoot = all.find((c: Cat) => c.key === "forms");
+  if (!formsRoot) return all;
+  return all.filter(
+    (c: Cat) =>
+      c.id === formsRoot.id || (c.parent && (c.parent as { key?: string }).key === "forms")
+  );
+}
+
+/** קטגוריות לקישורים בלבד — קישורים + תת-קטגוריות */
+export async function getCategoriesForLinks() {
+  const all = await getCategories();
+  type Cat = (typeof all)[number];
+  const linksRoot = all.find((c: Cat) => c.key === "links");
+  if (!linksRoot) return all;
+  return all.filter(
+    (c: Cat) =>
+      c.id === linksRoot.id || (c.parent && (c.parent as { key?: string }).key === "links")
+  );
 }
 
 export async function getAllCategories() {
   return db.query.categories.findMany({
-    orderBy: [categories.order],
+    with: { parent: { columns: { id: true, name: true } } },
+    orderBy: [categories.order, categories.name],
   });
 }
 
@@ -201,6 +228,7 @@ export async function createCategory(data: {
   icon?: string;
   color?: string;
   order?: number;
+  parentId?: string | null;
 }) {
   await requireAdmin();
   const [cat] = await db.insert(categories).values(data).returning();
@@ -218,6 +246,7 @@ export async function updateCategory(
     color?: string;
     order?: number;
     isActive?: boolean;
+    parentId?: string | null;
   }
 ) {
   await requireAdmin();
@@ -233,13 +262,28 @@ export async function updateCategory(
 
 export async function deleteCategory(id: string) {
   await requireAdmin();
-  await db
-    .update(categories)
-    .set({ isActive: false, updatedAt: new Date() })
-    .where(eq(categories.id, id));
+
+  const knowledgeCount = await db
+    .select({ count: countFn() })
+    .from(knowledgeItems)
+    .where(eq(knowledgeItems.categoryId, id));
+
+  if ((knowledgeCount[0]?.count ?? 0) > 0) {
+    return {
+      ok: false,
+      error: "לא ניתן למחוק קטגוריה עם פריטי ידע. יש להעביר או למחוק את פריטי הידע קודם.",
+    };
+  }
+
+  await db.update(forms).set({ categoryId: null }).where(eq(forms.categoryId, id));
+  await db.update(links).set({ categoryId: null }).where(eq(links.categoryId, id));
+  await db.update(categories).set({ parentId: null }).where(eq(categories.parentId, id));
+  await db.delete(categories).where(eq(categories.id, id));
 
   revalidatePath("/admin/categories");
   revalidatePath("/");
+  revalidatePath("/forms");
+  revalidatePath("/links");
   return { ok: true };
 }
 
