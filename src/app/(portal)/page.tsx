@@ -137,7 +137,8 @@ export default async function DashboardPage() {
             cats.map((cat) => {
               const Icon = iconMap[cat.key] || iconMap.default;
               const colorClass = colorMap[cat.key] || colorMap.default;
-              const parentKey = (cat.parent as { key?: string } | null)?.key;
+              const parent = cats.find((c) => c.id === cat.parentId);
+              const parentKey = parent?.key;
               const href =
                 cat.key === "forms" || parentKey === "forms"
                   ? cat.key === "forms"
